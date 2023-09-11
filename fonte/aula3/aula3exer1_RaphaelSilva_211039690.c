@@ -4,7 +4,7 @@
  * @brief Programa de cadastro de proprietários e carros. Os dados são organizados em ordem crescente baseado no CPF de cada proprietário.
  * 
  * Como a atividade 1 foi entregue em atraso, foi dito para reescrever um programa de algum colega. Portanto, reescrevi o programa do Jefferson Oliveira, presente nos arquivos da turma.
- * @version 0.2
+ * @version 0.3
  * @date 03/09/2023
  * 
  * @copyright Copyright (c) 2023
@@ -17,6 +17,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+
+struct Lista_Encadeada
+{
+    unsigned int tamanho;
+    void *inicio;
+};
+
 
 unsigned int quantidade_proprietarios = 0;
 typedef struct Veiculo_t{
@@ -91,36 +98,37 @@ void representar_veiculo(Proprietario_t *proprietario)
     }
 }
 
-void representar_proprietarios(Proprietario_t* proprietario)
+void representar_proprietarios(Proprietario_t* proprietarioInicial)
 {
-    if (proprietario == NULL);
+    if (proprietarioInicial == NULL);
     else
     {
-        printf("Nome: %s\n", proprietario->nome); 
-        printf("CPF: %s\n\n", proprietario->cpf);
-        representar_veiculo(proprietario);
-        representar_proprietarios(proprietario->proximo);
+        printf("Nome: %s\n", proprietarioInicial->nome); 
+        printf("CPF: %s\n\n", proprietarioInicial->cpf);
+        representar_veiculo(proprietarioInicial);
+        representar_proprietarios(proprietarioInicial->proximo);
     }
 }
 
-void desalocar_proprietarios_e_veiculos(Proprietario_t* proprietario)
+void desalocar_proprietarios_e_veiculos(Proprietario_t* proprietarioInicial)
 {
-    if (proprietario == NULL);
+    if (proprietarioInicial == NULL);
     else
     {
-        free(proprietario->carros);
-        desalocar_proprietarios_e_veiculos(proprietario->proximo);
-        free(proprietario);
+        free(proprietarioInicial->carros);
+        desalocar_proprietarios_e_veiculos(proprietarioInicial->proximo);
+        free(proprietarioInicial);
     }
 }
 
-char** linearizar_cpfs(Proprietario_t* proprietario_registrado_inicial)
+char** linearizar_cpfs(struct Lista_Encadeada* listaProprietarios)
 {
-    char** cpfs = (char**) malloc(sizeof(char*)*quantidade_proprietarios);
-    for (unsigned int r = 0; r < quantidade_proprietarios;r++)
+    Proprietario_t *__tempRegistro = (Proprietario_t*) listaProprietarios->inicio;
+    char** cpfs = (char**) malloc(sizeof(char*)*listaProprietarios->tamanho);
+    for (unsigned int r = 0; r < listaProprietarios->tamanho;r++)
     {
-        cpfs[r] = proprietario_registrado_inicial->cpf;
-        proprietario_registrado_inicial = proprietario_registrado_inicial->proximo;
+        cpfs[r] = __tempRegistro->cpf;
+        __tempRegistro = __tempRegistro->proximo;
     }
     return cpfs;
     
@@ -148,58 +156,58 @@ int comparar_cpf(char *esquerda, char *direita, unsigned int n_caracteres)
 
 
 // retorna o index que o novo cpf deve ocupar. Caso seja repetido, retorna -1.
-int busca_binaria_por_cpf(char** lista, char* cpf_alvo)
+int busca_binaria_por_cpf(char** lista, char* cpfAlvo, int indexFim)
 {
-    int inicio = 0, fim = quantidade_proprietarios - 1; 
+    int indexInicio = 0; 
     int meio;
     int comparation;
     while (1)
     {
-        if (inicio > fim)
+        if (indexInicio > indexFim)
         {
             break;
         }
-        meio = (inicio + fim) / 2;
-        comparation = comparar_cpf(lista[meio], cpf_alvo, 11);
+        meio = (indexInicio + indexFim) / 2;
+        comparation = comparar_cpf(lista[meio], cpfAlvo, 11);
         if (comparation < 0)
         {
-            fim = meio - 1;
+            indexFim = meio - 1;
         }
         else if (comparation > 0)
         {
-            inicio = meio + 1;
+            indexInicio = meio + 1;
         }
         else
         {
             return -1;
         }
     }
-    if (comparar_cpf(lista[meio], cpf_alvo, 11) == 0) {
+    if (comparar_cpf(lista[meio], cpfAlvo, 11) == 0) {
         return -1;
     } else {
-        return inicio;
+        return indexInicio;
     }
 }
 
 
 
-int inserir_por_cpf(Proprietario_t **proprietario_registrado_inicial, Proprietario_t* proprietario_novo)
+int inserir_por_cpf(struct Lista_Encadeada *listaProprietarios, Proprietario_t* proprietarioNovo)
 {
     unsigned int index;
     Proprietario_t* proprietario_movido = NULL, *__tmp = NULL;
-    if (proprietario_novo == NULL)
+    if (proprietarioNovo == NULL || listaProprietarios == NULL)
     {
         return 0;
     }
-    else if ((*proprietario_registrado_inicial) == NULL)
+    else if (listaProprietarios->inicio == NULL || listaProprietarios->tamanho == 0)
     {
-        (*proprietario_registrado_inicial) = proprietario_novo;
+        listaProprietarios->inicio = proprietarioNovo;
         return 1;
     }
     else
     {
-        char** cpfs = linearizar_cpfs((*proprietario_registrado_inicial));
-        if ((index = busca_binaria_por_cpf(cpfs, proprietario_novo->cpf)) == -1)
+        char** cpfs = linearizar_cpfs(listaProprietarios);
+        if ((index = busca_binaria_por_cpf(cpfs, proprietarioNovo->cpf, (listaProprietarios->tamanho)-1)) == -1)
         {
             return 0;
         }
@@ -207,21 +215,22 @@ int inserir_por_cpf(Proprietario_t **proprietario_registrado_inicial, Proprietar
         {
             if (index == 0)
             {
-                __tmp = (*proprietario_registrado_inicial);
-                (*proprietario_registrado_inicial) = proprietario_novo;
-                (*proprietario_registrado_inicial)->proximo = __tmp;
+                __tmp = (Proprietario_t*) listaProprietarios->inicio;
+                listaProprietarios->inicio = proprietarioNovo;
+                ((Proprietario_t*) listaProprietarios->inicio)->proximo = __tmp;
             }
             else
             {
-                proprietario_movido = *proprietario_registrado_inicial;
+                proprietario_movido = (Proprietario_t*) listaProprietarios->inicio;
                 for (unsigned int s = 0; s < index-1; s++)
                 {
                     proprietario_movido = proprietario_movido->proximo;
                 }
                 __tmp = proprietario_movido->proximo;
-                proprietario_movido->proximo = proprietario_novo;
-                proprietario_novo->proximo = __tmp;
+                proprietario_movido->proximo = proprietarioNovo;
+                proprietarioNovo->proximo = __tmp;
             }
+            listaProprietarios->tamanho++;
             return 1;
         }
     }
@@ -229,88 +238,91 @@ int inserir_por_cpf(Proprietario_t **proprietario_registrado_inicial, Proprietar
 
 int main() {
     FILE* arquivo;
+    struct Lista_Encadeada *listaProprietarios = (struct Lista_Encadeada*) malloc(sizeof(struct Lista_Encadeada));
+    listaProprietarios->tamanho = 0;
+    listaProprietarios->inicio = NULL;
     Proprietario_t* __finalizador = NULL; // variável interna para guardar a referência do último proprietário da lista.
-    Proprietario_t* proprietario_registrado = NULL;
-    Proprietario_t* proprietario_registrado_inicial = NULL;
+    Proprietario_t* proprietarioRegistrado = NULL;
     if (arquivo = fopen("dados.bin", "rb"))
     {
-        proprietario_registrado = (Proprietario_t*) malloc(sizeof(Proprietario_t));
-        proprietario_registrado_inicial = proprietario_registrado;
+        listaProprietarios->inicio = malloc(sizeof(Proprietario_t));
+        proprietarioRegistrado = (Proprietario_t*) listaProprietarios->inicio;
         while (1)
         {
-            if (1 != ler_proprietario(proprietario_registrado, arquivo))
+            if (1 != ler_proprietario(proprietarioRegistrado, arquivo))
             {
-                free(proprietario_registrado);
-                if (proprietario_registrado == proprietario_registrado_inicial)
+                if (proprietarioRegistrado == (Proprietario_t*) listaProprietarios->inicio)
                 {
-                    proprietario_registrado_inicial = NULL;
+                    listaProprietarios->inicio = NULL;
                 }
                 else
                 {
                     __finalizador->proximo = NULL;
                     __finalizador = NULL; //desvinculando o finalizador da tarefa
                 }
-                proprietario_registrado = NULL;
+                free(proprietarioRegistrado);
+                proprietarioRegistrado = NULL;
                 break;
             }
-            quantidade_proprietarios++;
-            proprietario_registrado->proximo = (Proprietario_t*) malloc(sizeof(Proprietario_t));
-            __finalizador = proprietario_registrado;
-            proprietario_registrado = proprietario_registrado->proximo;
+            listaProprietarios->tamanho++;
+            proprietarioRegistrado->proximo = (Proprietario_t*) malloc(sizeof(Proprietario_t));
+            __finalizador = proprietarioRegistrado;
+            proprietarioRegistrado = proprietarioRegistrado->proximo;
         }
         fclose(arquivo);
     }
 
 
 
-    Proprietario_t* proprietario_novo = (Proprietario_t*) malloc(sizeof(Proprietario_t));
+    Proprietario_t* proprietarioNovo = (Proprietario_t*) malloc(sizeof(Proprietario_t));
     while (1) {
         printf("Nome do Proprietário (ou 'sair' para finalizar): ");
-        scanf("%s", proprietario_novo->nome);
+        scanf("%s", proprietarioNovo->nome);
 
-        if (strcmp(proprietario_novo->nome, "sair") == 0) {
-            free(proprietario_novo);
-            proprietario_novo = NULL;
+        if (strcmp(proprietarioNovo->nome, "sair") == 0) {
+            free(proprietarioNovo);
+            proprietarioNovo = NULL;
             break;
         }
 
         printf("CPF do Proprietário: ");
-        scanf("%s", proprietario_novo->cpf);
+        scanf("%s", proprietarioNovo->cpf);
 
         printf("Quantidade de carros do proprietário:");
-        scanf("%d", &(proprietario_novo->num_carros));
+        scanf("%d", &(proprietarioNovo->num_carros));
 
-        proprietario_novo->carros = (Veiculo_t*) malloc(sizeof(Veiculo_t) * proprietario_novo->num_carros);
+        proprietarioNovo->carros = (Veiculo_t*) malloc(sizeof(Veiculo_t) * proprietarioNovo->num_carros);
 
-        for (int j = 0; j < proprietario_novo->num_carros; j++) {
+        for (int j = 0; j < proprietarioNovo->num_carros; j++) {
             printf("Placa do Carro %d:", j + 1);
-            scanf("%s", proprietario_novo->carros[j].placa); 
+            scanf("%s", proprietarioNovo->carros[j].placa); 
 
             printf("Modelo do Carro %d:", j + 1);
-            scanf("%s", proprietario_novo->carros[j].modelo); 
+            scanf("%s", proprietarioNovo->carros[j].modelo); 
         }
-        if (!(inserir_por_cpf(&proprietario_registrado_inicial, proprietario_novo)))
+        if (!(inserir_por_cpf(listaProprietarios, proprietarioNovo)))
         {
             printf("O CPF inserido já existe no sistema. Por favor, digite outro ou relate o caso a um supervisor do sistema.\n\n");
 
-            proprietario_novo->proximo = NULL;
-            desalocar_proprietarios_e_veiculos(proprietario_novo);
+            proprietarioNovo->proximo = NULL;
+            desalocar_proprietarios_e_veiculos(proprietarioNovo);
         }
-        proprietario_novo = (Proprietario_t*) malloc(sizeof(Proprietario_t));
+        proprietarioNovo = (Proprietario_t*) malloc(sizeof(Proprietario_t));
     }
     printf("\nPROPRIETÁRIOS CADASTRADOS\n\n");
-    representar_proprietarios(proprietario_registrado_inicial);
+    representar_proprietarios((Proprietario_t*) listaProprietarios->inicio);
 
     // transcrição no arquivos
     arquivo = fopen("dados.bin", "wb");
-    proprietario_registrado = proprietario_registrado_inicial;
-    while (proprietario_registrado != NULL)
+    proprietarioRegistrado = (Proprietario_t*)listaProprietarios->inicio;
+    while (proprietarioRegistrado != NULL)
     {
-        transcrever_proprietario(proprietario_registrado, arquivo);
-        proprietario_registrado = proprietario_registrado->proximo;
+        transcrever_proprietario(proprietarioRegistrado, arquivo);
+        proprietarioRegistrado = proprietarioRegistrado->proximo;
     }
     fclose(arquivo);
     printf("Dados salvos em 'dados.bin'\n\n");
-    desalocar_proprietarios_e_veiculos(proprietario_registrado_inicial);
+    desalocar_proprietarios_e_veiculos((Proprietario_t*) listaProprietarios->inicio);
+    free(listaProprietarios);
     return 0;
 }
