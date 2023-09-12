@@ -24,77 +24,133 @@ struct Lista_Encadeada
     void *inicio;
 };
 
-
-unsigned int quantidade_proprietarios = 0;
 typedef struct Veiculo_t{
-    char placa[8];
-    char modelo[20];
+    char placa[7];
+    char modelo[30];
+    struct Veiculo_t *proximo;
 } Veiculo_t;
 
 typedef struct Proprietario_t{
     char nome[30];
-    char cpf[12];
-    unsigned int num_carros;
-    Veiculo_t *carros;
+    char cpf[11];
+    struct Lista_Encadeada *carros;
     struct Proprietario_t *proximo;
 } Proprietario_t;
 
-
-void transcrever_veiculo(Proprietario_t *proprietario, FILE* arquivo)
+void desalocar_veiculos(Proprietario_t* proprietario)
 {
-    for (unsigned int m = 0; m < proprietario->num_carros; m++)
+    if (proprietario == NULL || proprietario->carros == NULL || proprietario->carros->inicio == NULL);
+    else
     {
-        fprintf(arquivo, "%s %s ", proprietario->carros[m].placa, proprietario->carros[m].modelo);
+        Veiculo_t* __finalizador, *__tempVeiculo;
+        __tempVeiculo->proximo = NULL;
+        __tempVeiculo = (Veiculo_t*) proprietario->carros->inicio;
+        while (__tempVeiculo != NULL)
+        {
+            __finalizador = __tempVeiculo->proximo;
+            free(__tempVeiculo);
+            __tempVeiculo = __finalizador;
+        }
+    }
+}
+
+void desalocar_proprietarios_e_veiculos(Proprietario_t* proprietarioInicial)
+{
+    if (proprietarioInicial == NULL);
+    else
+    {
+        desalocar_veiculos(proprietarioInicial);
+        free(proprietarioInicial->carros);
+        desalocar_proprietarios_e_veiculos(proprietarioInicial->proximo);
+        free(proprietarioInicial);
+    }
+}
+
+void transcrever_campo(char * campo, unsigned int tamanho_esperado)
+{
+    unsigned int tamanho_real = strlen(campo);
+    if (tamanho_esperado <= tamanho_real);
+    else
+    {
+        memset(campo+tamanho_real, ' ', tamanho_esperado - tamanho_real);
     }
 }
 
 void transcrever_proprietario(Proprietario_t* proprietario, FILE* arquivo)
 {
-    fprintf(arquivo, "%s %s %d ", proprietario->nome, proprietario->cpf, proprietario->num_carros);
-    transcrever_veiculo(proprietario, arquivo);
+    transcrever_campo(proprietario->nome, 30);
+    fwrite(proprietario->nome, sizeof(char), 30, arquivo);
+    transcrever_campo(proprietario->cpf, 11);
+    fwrite(proprietario->cpf, sizeof(char), 11, arquivo);
+
+    Veiculo_t* __tempVeiculo = proprietario->carros->inicio;
+    for (unsigned int m = 0; m < proprietario->carros->tamanho; m++)
+    {
+        transcrever_campo(__tempVeiculo->placa, 7);
+        fwrite(__tempVeiculo->placa, sizeof(char), 7, arquivo);
+        transcrever_campo(__tempVeiculo->modelo, 30);
+        fwrite(__tempVeiculo->modelo, sizeof(char), 30, arquivo);
+        __tempVeiculo = __tempVeiculo->proximo;
+    }
 }
 
 int ler_veiculo(Proprietario_t *proprietario, FILE* arquivo)
 {
-    int scan_result;
-    proprietario->carros = (Veiculo_t*) malloc(sizeof(Veiculo_t) * proprietario->num_carros);
-    for (unsigned int n = 0; n < proprietario->num_carros; n++)
+    int scanResult;
+    proprietario->carros->inicio = (Veiculo_t*) malloc(sizeof(Veiculo_t));
+    Veiculo_t* __tempVeiculo = (Veiculo_t*) proprietario->carros->inicio;
+    scanResult = 0;
+    scanResult += fread(__tempVeiculo->placa, sizeof(char), 7, arquivo);        
+    scanResult += fread(__tempVeiculo->modelo, sizeof(char), 30, arquivo);
+    if (37 != scanResult)
     {
-        scan_result = fscanf(arquivo, "%s %s", proprietario->carros[n].placa, proprietario->carros[n].modelo);
-        if (2 != scan_result)
+        free(proprietario->carros);
+        return 0;
+    }
+    for (unsigned int n = 1; n < proprietario->carros->tamanho; n++)
+    {
+        scanResult = 0;
+        __tempVeiculo = __tempVeiculo->proximo;
+        scanResult += fread(__tempVeiculo->placa, sizeof(char), 7, arquivo);        
+        scanResult += fread(__tempVeiculo->modelo, sizeof(char), 30, arquivo);
+        if (37 != scanResult)
         {
+            desalocar_veiculos(proprietario);
             free(proprietario->carros);
             return 0;
         }
     }
+    __tempVeiculo->proximo = NULL;
     return 1;
 }
 
 int ler_proprietario(Proprietario_t* proprietario, FILE* arquivo)
 {
-    int scan_result = fscanf(arquivo, "%s %s %d", proprietario->nome, proprietario->cpf, &(proprietario->num_carros));
+    proprietario->carros = (struct Lista_Encadeada*) malloc(sizeof(struct Lista_Encadeada));
+    unsigned int scanResult = 0;
+    scanResult += fread(proprietario->nome, sizeof(char), 30, arquivo);
+    scanResult += fread(proprietario->cpf, sizeof(char), 11, arquivo);
+    scanResult += fread(&(proprietario->carros->tamanho), sizeof(unsigned int), 1, arquivo);
     proprietario->proximo = NULL;
-    if (scan_result == 3)
+    if (scanResult == 42)
     {
         return ler_veiculo(proprietario, arquivo);
     }
-    else if (scan_result == EOF)
-    {
-        return -1;
-    }
     else
     {
+        free(proprietario->carros);
         return 0;
     }
 }
 
 void representar_veiculo(Proprietario_t *proprietario)
 {
-    for (unsigned int o = 0; o < proprietario->num_carros; o++)
+    Veiculo_t* __tempVeiculo = (Veiculo_t*) proprietario->carros->inicio;
+    for (unsigned int o = 0; o < proprietario->carros->tamanho; o++)
     {
         printf("Carro %d:\n", o+1);
-        printf("Placa: %s\n", proprietario->carros[o].placa);
-        printf("Modelo: %s\n\n", proprietario->carros[o].modelo);
+        printf("Placa: %s\n", __tempVeiculo->placa);
+        printf("Modelo: %s\n\n", __tempVeiculo->modelo);
     }
 }
 
@@ -110,16 +166,7 @@ void representar_proprietarios(Proprietario_t* proprietarioInicial)
     }
 }
 
-void desalocar_proprietarios_e_veiculos(Proprietario_t* proprietarioInicial)
-{
-    if (proprietarioInicial == NULL);
-    else
-    {
-        free(proprietarioInicial->carros);
-        desalocar_proprietarios_e_veiculos(proprietarioInicial->proximo);
-        free(proprietarioInicial);
-    }
-}
+
 
 char** linearizar_cpfs(struct Lista_Encadeada* listaProprietarios)
 {
@@ -288,17 +335,41 @@ int main() {
         printf("CPF do Proprietário: ");
         scanf("%s", proprietarioNovo->cpf);
 
+        proprietarioNovo->carros = (struct Lista_Encadeada*) malloc(sizeof(struct Lista_Encadeada));
+
         printf("Quantidade de carros do proprietário:");
-        scanf("%d", &(proprietarioNovo->num_carros));
+        scanf("%d", &(proprietarioNovo->carros->tamanho));
 
-        proprietarioNovo->carros = (Veiculo_t*) malloc(sizeof(Veiculo_t) * proprietarioNovo->num_carros);
+        if (proprietarioNovo->carros->tamanho < 1)
+        {
+            printf("Dado inválido. Por favor, refaça o seu cadastro.\n");
+            free(proprietarioNovo->carros);
+            continue;
+        }
 
-        for (int j = 0; j < proprietarioNovo->num_carros; j++) {
+        Veiculo_t *veiculoNovo;
+        Veiculo_t *__tempVeiculo;
+        
+        veiculoNovo = (Veiculo_t*) malloc(sizeof(Veiculo_t));
+        printf("Placa do Carro 1:");
+        scanf("%s", veiculoNovo->placa); 
+
+        printf("Modelo do Carro 1:");
+        scanf("%s", veiculoNovo->modelo);
+
+        proprietarioNovo->carros->inicio = veiculoNovo;
+        __tempVeiculo = veiculoNovo;
+
+        for (int j = 1; j < proprietarioNovo->carros->tamanho; j++) {
+            veiculoNovo = (Veiculo_t*) malloc(sizeof(Veiculo_t));
             printf("Placa do Carro %d:", j + 1);
-            scanf("%s", proprietarioNovo->carros[j].placa); 
+            scanf("%s", veiculoNovo->placa); 
 
             printf("Modelo do Carro %d:", j + 1);
-            scanf("%s", proprietarioNovo->carros[j].modelo); 
+            scanf("%s", veiculoNovo->modelo);
+
+            __tempVeiculo->proximo = veiculoNovo;
+            __tempVeiculo = veiculoNovo;
         }
         if (!(inserir_por_cpf(listaProprietarios, proprietarioNovo)))
         {
