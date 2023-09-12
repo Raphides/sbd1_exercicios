@@ -1,3 +1,18 @@
+/**
+ * @file aula2exer1_RaphaelSilva_211039690.c
+ * @author Raphael Mendes da Silva (211039690)
+ * @brief Programa de cadastro de proprietários e carros. Os dados são organizados em ordem crescente baseado no CPF de cada proprietário.
+ * 
+ * Como a atividade 1 foi entregue em atraso, foi dito para reescrever um programa de algum colega. Portanto, reescrevi o programa do Jefferson Oliveira, presente nos arquivos da turma.
+ * @version 0.2
+ * @date 03/09/2023
+ * 
+ * @copyright Copyright (c) 2023
+ * 
+ */
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
